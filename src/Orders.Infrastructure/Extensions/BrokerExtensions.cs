@@ -1,5 +1,6 @@
 
 using Joseco.Communication.External.Contracts.Services;
+using Orders.Infrastructure.Inbox;
 using Joseco.Communication.External.RabbitMQ.Services;
 using Joseco.Communication.External.RabbitMQ;
 using Microsoft.AspNetCore.Hosting;
@@ -38,11 +39,17 @@ public static class BrokerExtensions
         services.AddRabbitMqConsumer<PaymentCompleted, CreateOrderSagaHandler>("orders-payment-completed");
         services.AddRabbitMqConsumer<PaymentFailed, CreateOrderSagaHandler>("orders-payment-failed");
 
+        services.Decorate<IIntegrationMessageConsumer<ProductCreated>, IdempotentConsumer<ProductCreated>>();
         services.Decorate<IIntegrationMessageConsumer<ProductCreated>, TracingConsumer<ProductCreated>>();
+        services.Decorate<IIntegrationMessageConsumer<InventoryReserved>, IdempotentConsumer<InventoryReserved>>();
         services.Decorate<IIntegrationMessageConsumer<InventoryReserved>, TracingConsumer<InventoryReserved>>();
+        services.Decorate<IIntegrationMessageConsumer<OrderPaymentInProcessRegistered>, IdempotentConsumer<OrderPaymentInProcessRegistered>>();
         services.Decorate<IIntegrationMessageConsumer<OrderPaymentInProcessRegistered>, TracingConsumer<OrderPaymentInProcessRegistered>>();
+        services.Decorate<IIntegrationMessageConsumer<InventoryReservationFailed>, IdempotentConsumer<InventoryReservationFailed>>();
         services.Decorate<IIntegrationMessageConsumer<InventoryReservationFailed>, TracingConsumer<InventoryReservationFailed>>();
+        services.Decorate<IIntegrationMessageConsumer<PaymentCompleted>, IdempotentConsumer<PaymentCompleted>>();
         services.Decorate<IIntegrationMessageConsumer<PaymentCompleted>, TracingConsumer<PaymentCompleted>>();
+        services.Decorate<IIntegrationMessageConsumer<PaymentFailed>, IdempotentConsumer<PaymentFailed>>();
         services.Decorate<IIntegrationMessageConsumer<PaymentFailed>, TracingConsumer<PaymentFailed>>();
 
 

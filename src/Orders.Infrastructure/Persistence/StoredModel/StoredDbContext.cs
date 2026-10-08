@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Storage;
+using Orders.Infrastructure.Inbox;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore;
 using Joseco.DDD.Core.Abstractions;
 using Joseco.Outbox.EFCore.Persistence;
@@ -16,6 +17,7 @@ internal class StoredDbContext(DbContextOptions<StoredDbContext> options) : DbCo
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.AddOutboxModel<DomainEvent>();
+        modelBuilder.AddInboxModel();
     }
 
     public void Migrate()

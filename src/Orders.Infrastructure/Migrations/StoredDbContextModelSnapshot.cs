@@ -67,6 +67,26 @@ namespace Orders.Infrastructure.Migrations
                     b.ToTable("outboxMessage", "outbox");
                 });
 
+            modelBuilder.Entity("Orders.Infrastructure.Inbox.InboxMessage", b =>
+                {
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("messageId");
+
+                    b.Property<string>("Consumer")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("consumer");
+
+                    b.Property<DateTime>("ProcessedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processedOn");
+
+                    b.HasKey("MessageId", "Consumer");
+
+                    b.ToTable("inboxMessage", (string)null);
+                });
+
             modelBuilder.Entity("Orders.Infrastructure.Persistence.StoredModel.Entities.OrderItemStoredModel", b =>
                 {
                     b.Property<Guid>("Id")
