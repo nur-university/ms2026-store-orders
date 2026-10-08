@@ -23,4 +23,8 @@
     <ProjectReference Include="..\Orders.Domain\Orders.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orders.Test" />
+  </ItemGroup>
+
 </Project>

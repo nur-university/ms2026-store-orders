@@ -1,0 +1,91 @@
+using Joseco.DDD.Core.Abstractions;
+using Joseco.DDD.Core.Results;
+using Orders.Domain.Orders;
+using Orders.Domain.Orders.Events;
+
+namespace Orders.Test.Domain;
+
+public class OrderTests
+{
+    private static Order NewOrder() => Order.Create([(Guid.NewGuid(), 10m, 2)]);
+
+    private static Order InStatus(OrderStatus status)
+    {
+        Order order = NewOrder();
+        if (status >= OrderStatus.Reserved && status <= OrderStatus.Paid) order.MarkAsReserved();
+        if (status >= OrderStatus.PaymentInProcess && status <= OrderStatus.Paid) order.MarkAsPaymentInProcess();
+        if (status == OrderStatus.Paid) order.MarkAsPaid();
+        order.ClearDomainEvents();
+        return order;
+    }
+
+    [Fact]
+    public void Create_RaisesOrderStarted()
+    {
+        Order order = NewOrder();
+
+        Assert.Equal(OrderStatus.Started, order.Status);
+        Assert.Single(order.DomainEvents.OfType<OrderStarted>());
+    }
+
+    [Fact]
+    public void MarkAsPaid_FromPaymentInProcess_RaisesOrderPaid()
+    {
+        Order order = InStatus(OrderStatus.PaymentInProcess);
+
+        order.MarkAsPaid();
+
+        Assert.Equal(OrderStatus.Paid, order.Status);
+        Assert.Single(order.DomainEvents.OfType<OrderPaid>());
+    }
+
+    [Fact]
+    public void MarkAsPaid_FromReserved_Throws()
+    {
+        Order order = InStatus(OrderStatus.Reserved);
+
+        Assert.Throws<DomainException>(() => order.MarkAsPaid());
+        Assert.Equal(OrderStatus.Reserved, order.Status);
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.Reserved)]
+    [InlineData(OrderStatus.PaymentInProcess)]
+    public void MarkAsFailed_WithReservedStock_RequestsStockRelease(OrderStatus from)
+    {
+        Order order = InStatus(from);
+
+        order.MarkAsFailed("card declined");
+
+        Assert.Equal(OrderStatus.Failed, order.Status);
+        OrderStockReleaseRequested release = Assert.Single(order.DomainEvents.OfType<OrderStockReleaseRequested>());
+        Assert.Equal(order.Id, release.OrderId);
+        Assert.Equal("card declined", release.Reason);
+    }
+
+    [Fact]
+    public void MarkAsFailed_BeforeReservation_DoesNotRequestStockRelease()
+    {
+        Order order = InStatus(OrderStatus.Started);
+
+        order.MarkAsFailed("no stock");
+
+        Assert.Equal(OrderStatus.Failed, order.Status);
+        Assert.Empty(order.DomainEvents.OfType<OrderStockReleaseRequested>());
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.Reserved, true)]
+    [InlineData(OrderStatus.PaymentInProcess, true)]
+    [InlineData(OrderStatus.Started, false)]
+    [InlineData(OrderStatus.Paid, false)]
+    public void MarkAsCanceled_RequestsStockReleaseOnlyWhileStockIsReserved(OrderStatus from, bool expectsRelease)
+    {
+        Order order = InStatus(from);
+
+        order.MarkAsCanceled();
+
+        Assert.Equal(OrderStatus.Canceled, order.Status);
+        Assert.Equal(expectsRelease, order.DomainEvents.OfType<OrderStockReleaseRequested>().Any());
+    }
+}
