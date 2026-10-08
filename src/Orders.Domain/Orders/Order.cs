@@ -128,6 +128,19 @@ public class Order : AggregateRoot
         }
     }
 
+    /// <summary>
+    /// Asks inventory to release stock that was reserved after this order had already been closed
+    /// (for example InventoryReserved arriving after a timeout). The status does not change.
+    /// </summary>
+    public void RequestStockRelease(string reason)
+    {
+        if (Status != OrderStatus.Failed && Status != OrderStatus.Canceled)
+        {
+            throw new DomainException(OrderErrors.StockReleaseNotAllowed(Status));
+        }
+        AddDomainEvent(new OrderStockReleaseRequested(Id, reason));
+    }
+
     // Stock is reserved from Reserved until Paid (once Paid, inventory confirms the exit and it can't be released).
     private bool HasReservedStock() =>
         Status == OrderStatus.Reserved || Status == OrderStatus.PaymentInProcess;

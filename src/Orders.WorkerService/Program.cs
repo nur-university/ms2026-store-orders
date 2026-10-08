@@ -2,6 +2,7 @@ using Joseco.DDD.Core.Abstractions;
 using Joseco.Outbox.EFCore;
 using Orders.Application;
 using Orders.Infrastructure;
+using Orders.Infrastructure.Timeouts;
 using Nur.Store2026.Observability;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -15,6 +16,7 @@ builder.Services
     .AddInfrastructure(builder.Configuration, builder.Environment, serviceName);
 
 builder.Services.AddOutboxBackgroundService<DomainEvent>();
+builder.Services.AddOrderTimeouts(builder.Configuration);
 
 var host = builder.Build();
 host.Run();

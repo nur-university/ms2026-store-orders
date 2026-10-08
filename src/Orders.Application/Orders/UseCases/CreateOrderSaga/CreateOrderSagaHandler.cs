@@ -75,7 +75,7 @@ public class CreateOrderSagaHandler :
             ];
 
         Nur.Store2026.Integration.Orders.OrderStarted integrationMessage =
-            new(notification.Content.OrderId, items);
+            new(notification.Content.OrderId, items) { Id = notification.Content.Id };
 
         await _publisher.PublishAsync(integrationMessage);
     }
@@ -99,6 +99,16 @@ public class CreateOrderSagaHandler :
             return;
         }
 
+        if (order.Status is OrderStatus.Failed or OrderStatus.Canceled)
+        {
+            // The order was closed (for example by a timeout) before inventory answered: undo that reservation.
+            _logger.LogWarning("InventoryReserved received for order {OrderId} in status {Status}; requesting stock release",
+                order.Id, order.Status);
+            order.RequestStockRelease("Stock reserved after the order was closed");
+            await _unitOfWork.CommitAsync(cancellationToken);
+            return;
+        }
+
         order.MarkAsReserved();
 
         await _unitOfWork.CommitAsync(cancellationToken);
@@ -113,7 +123,7 @@ public class CreateOrderSagaHandler :
     public Task Handle(OutboxMessage<Domain.Orders.Events.OrderReserved> notification, CancellationToken cancellationToken)
     {
         var domainEvent = notification.Content;
-        Nur.Store2026.Integration.Orders.OrderReserved integrationMessage = new(domainEvent.OrderId, domainEvent.TotalAmount);
+        Nur.Store2026.Integration.Orders.OrderReserved integrationMessage = new(domainEvent.OrderId, domainEvent.TotalAmount) { Id = domainEvent.Id };
 
         return _publisher.PublishAsync(integrationMessage);
     }
@@ -199,7 +209,7 @@ public class CreateOrderSagaHandler :
 
     public Task Handle(OutboxMessage<Domain.Orders.Events.OrderPaid> notification, CancellationToken cancellationToken)
     {
-        Nur.Store2026.Integration.Orders.OrderPaid integrationMessage = new(notification.Content.OrderId);
+        Nur.Store2026.Integration.Orders.OrderPaid integrationMessage = new(notification.Content.OrderId) { Id = notification.Content.Id };
 
         return _publisher.PublishAsync(integrationMessage);
     }
@@ -208,7 +218,7 @@ public class CreateOrderSagaHandler :
     {
         var domainEvent = notification.Content;
         Nur.Store2026.Integration.Orders.OrderStockReleaseRequested integrationMessage =
-            new(domainEvent.OrderId, domainEvent.Reason);
+            new(domainEvent.OrderId, domainEvent.Reason) { Id = domainEvent.Id };
 
         return _publisher.PublishAsync(integrationMessage);
     }

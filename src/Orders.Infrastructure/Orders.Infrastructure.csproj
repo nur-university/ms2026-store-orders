@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -37,6 +37,10 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\..\SharedKernel\Nur.Store2026.Security\src\Nur.Store2026.Security\Nur.Store2026.Security.csproj" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\SharedKernel\Nur.Store2026.Security\src\Nur.Store2026.Security\Nur.Store2026.Security.csproj')" />
     <PackageReference Include="Nur.Store2025.Observability" Version="1.0.0" Condition="!Exists('$(MSBuildThisFileDirectory)..\..\..\..\SharedKernel\Nur.Store2026.Observability\src\Nur.Store2026.Observability\Nur.Store2026.Observability.csproj')" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\..\SharedKernel\Nur.Store2026.Observability\src\Nur.Store2026.Observability\Nur.Store2026.Observability.csproj" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\SharedKernel\Nur.Store2026.Observability\src\Nur.Store2026.Observability\Nur.Store2026.Observability.csproj')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orders.Test" />
   </ItemGroup>
 
 </Project>

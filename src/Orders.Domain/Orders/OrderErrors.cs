@@ -38,6 +38,11 @@ public class OrderErrors
             $"Order is not allowed to mark as canceled. Order should be Completed or Canceled. The current status is {status}.",
             ErrorType.Validation);
 
+    public static Error StockReleaseNotAllowed(OrderStatus status) =>
+        new("Order.StockReleaseNotAllowed",
+            $"Stock can only be released for a Failed or Canceled order. The current status is {status}.",
+            ErrorType.Validation);
+
     public static Error FailedStatusNotAllowed(OrderStatus status) =>
         new("Order.FailedNotAllowed",
             $"Order is not allowed to mark as failed. Order should be Completed, Canceled or Failed. The current status is {status}.",
