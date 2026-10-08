@@ -1,0 +1,17 @@
+{
+  "profiles": {
+    "Orders.WorkerService": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "VAULT_URL": "http://localhost:8200",
+        "VAULT_TOKEN": "vaultroot"
+      },
+      "dotnetRunMessages": true
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  },
+  "$schema": "http://json.schemastore.org/launchsettings.json"
+}

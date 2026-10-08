@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Joseco.DDD.Core" Version="1.0.0" Condition="!Exists('$(MSBuildThisFileDirectory)..\..\..\..\Utils\Joseco.App.Core\src\Joseco.DDD.Core\Joseco.DDD.Core.csproj')" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\..\Utils\Joseco.App.Core\src\Joseco.DDD.Core\Joseco.DDD.Core.csproj" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\Utils\Joseco.App.Core\src\Joseco.DDD.Core\Joseco.DDD.Core.csproj')" />
+  </ItemGroup>
+
+</Project>

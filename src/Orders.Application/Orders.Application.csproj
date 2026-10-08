@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="12.5.0" />
+    <PackageReference Include="Serilog" Version="4.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.3" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.5" />
+
+    <PackageReference Include="Nur.Store2025.Integration" Version="1.0.1" Condition="!Exists('$(MSBuildThisFileDirectory)..\..\..\..\SharedKernel\Nur.Store2026.Integration\src\Nur.Store2026.Integration\Nur.Store2026.Integration.csproj')" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\..\SharedKernel\Nur.Store2026.Integration\src\Nur.Store2026.Integration\Nur.Store2026.Integration.csproj" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\SharedKernel\Nur.Store2026.Integration\src\Nur.Store2026.Integration\Nur.Store2026.Integration.csproj')" />
+    <PackageReference Include="Joseco.Outbox.Contracts" Version="1.0.2" Condition="!Exists('$(MSBuildThisFileDirectory)..\..\..\..\Utils\Joseco.Outbox\Joseco.Outbox.Contracts\Joseco.Outbox.Contracts.csproj')" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\..\Utils\Joseco.Outbox\Joseco.Outbox.Contracts\Joseco.Outbox.Contracts.csproj" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\Utils\Joseco.Outbox\Joseco.Outbox.Contracts\Joseco.Outbox.Contracts.csproj')" />
+
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Orders.Domain\Orders.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
