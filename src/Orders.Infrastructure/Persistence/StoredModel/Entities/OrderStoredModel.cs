@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -45,6 +45,9 @@ internal class OrderStoredModel
 
     [Column("failedOn")]
     public DateTime? FailedOn { get; set; }
+
+    [Column("userId")]
+    public Guid? UserId { get; set; }
 
     [Column("failureReason")]
     [MaxLength(1000)]

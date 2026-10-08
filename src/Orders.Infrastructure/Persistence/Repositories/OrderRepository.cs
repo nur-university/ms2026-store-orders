@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Orders.Domain.Orders;
 using Orders.Infrastructure.Persistence.DomainModel;
 
@@ -10,6 +10,20 @@ internal class OrderRepository(DomainDbContext context) : IOrderRepository
     public async Task AddAsync(Order entity)
     {
         await _context.Orders.AddAsync(entity);
+    }
+
+    public async Task<(IReadOnlyList<Order> Orders, int Total)> GetPageAsync(Guid? userId, int skip, int take)
+    {
+        IQueryable<Order> query = _context.Orders.AsNoTracking();
+        if (userId.HasValue)
+        {
+            query = query.Where(o => o.UserId == userId.Value);
+        }
+
+        int total = await query.CountAsync();
+        List<Order> page = await query.Include("_items").OrderByDescending(o => o.StartedOn).Skip(skip).Take(take).ToListAsync();
+
+        return (page, total);
     }
 
     public async Task<IReadOnlyList<(Guid OrderId, OrderStatus Status)>> GetStaleAsync(

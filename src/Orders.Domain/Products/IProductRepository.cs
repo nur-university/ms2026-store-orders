@@ -1,4 +1,4 @@
-﻿using Joseco.DDD.Core.Abstractions;
+using Joseco.DDD.Core.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,4 +9,5 @@ namespace Orders.Domain.Products;
 
 public interface IProductRepository : IRepository<Product>
 {
+    Task<IReadOnlyList<Product>> GetByIdsAsync(IEnumerable<Guid> ids);
 }

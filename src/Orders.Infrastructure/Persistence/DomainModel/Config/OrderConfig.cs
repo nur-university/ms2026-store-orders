@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Orders.Domain.Orders;
@@ -60,6 +60,9 @@ internal class OrderConfig : IEntityTypeConfiguration<Order>,
 
         builder.Property(x => x.FailedOn)
             .HasColumnName("failedOn");
+
+        builder.Property(x => x.UserId)
+            .HasColumnName("userId");
 
         builder.Property(x => x.FailureReason)
             .HasColumnName("failureReason")

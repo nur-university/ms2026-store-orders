@@ -1,4 +1,4 @@
-﻿using Joseco.DDD.Core.Results;
+using Joseco.DDD.Core.Results;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,8 +35,25 @@ public class OrderErrors
 
     public static Error CanceledStatusNotAllowed(OrderStatus status) =>
         new("Order.CanceledNotAllowed",
-            $"Order is not allowed to mark as canceled. Order should be Completed or Canceled. The current status is {status}.",
+            $"Only Started, Reserved or PaymentInProcess orders can be canceled. The current status is {status}.",
+            ErrorType.Conflict);
+
+    public static Error PaymentCancellationNotAllowed(OrderStatus status) =>
+        new("Order.PaymentCancellationNotAllowed",
+            $"A payment can only be canceled for a Failed or Canceled order. The current status is {status}.",
             ErrorType.Validation);
+
+    public static Error EmptyOrder() =>
+        new("Order.Empty", "An order needs at least one item", ErrorType.Validation);
+
+    public static Error ProductNotFound(Guid productId) =>
+        new("Order.ProductNotFound", $"The product {productId} does not exist", ErrorType.NotFound);
+
+    public static Error ProductPriceUnavailable(Guid productId) =>
+        new("Order.ProductPriceUnavailable", $"The price of the product {productId} is not available yet", ErrorType.Conflict);
+
+    public static Error OrderNotFound(Guid orderId) =>
+        new("Order.NotFound", $"The order {orderId} does not exist", ErrorType.NotFound);
 
     public static Error StockReleaseNotAllowed(OrderStatus status) =>
         new("Order.StockReleaseNotAllowed",

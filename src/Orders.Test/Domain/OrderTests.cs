@@ -78,14 +78,59 @@ public class OrderTests
     [InlineData(OrderStatus.Reserved, true)]
     [InlineData(OrderStatus.PaymentInProcess, true)]
     [InlineData(OrderStatus.Started, false)]
-    [InlineData(OrderStatus.Paid, false)]
-    public void MarkAsCanceled_RequestsStockReleaseOnlyWhileStockIsReserved(OrderStatus from, bool expectsRelease)
+    public void MarkAsCanceled_RequestsCompensationOnlyWhileStockIsReserved(OrderStatus from, bool expectsCompensation)
     {
         Order order = InStatus(from);
 
         order.MarkAsCanceled();
 
         Assert.Equal(OrderStatus.Canceled, order.Status);
-        Assert.Equal(expectsRelease, order.DomainEvents.OfType<OrderStockReleaseRequested>().Any());
+        Assert.Equal(expectsCompensation, order.DomainEvents.OfType<OrderStockReleaseRequested>().Any());
+        // A payment may already be pending exactly when stock is reserved.
+        Assert.Equal(expectsCompensation, order.DomainEvents.OfType<OrderPaymentCancellationRequested>().Any());
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.Paid)]
+    [InlineData(OrderStatus.Failed)]
+    public void MarkAsCanceled_AfterPaymentOrFailure_IsRejected(OrderStatus from)
+    {
+        Order order = InStatus(from == OrderStatus.Failed ? OrderStatus.Started : from);
+        if (from == OrderStatus.Failed) order.MarkAsFailed("seed");
+
+        DomainException ex = Assert.Throws<DomainException>(() => order.MarkAsCanceled());
+
+        Assert.Equal("Order.CanceledNotAllowed", ex.Error.Code);
+        Assert.Equal(from, order.Status);
+    }
+
+    [Fact]
+    public void MarkAsFailed_WithPendingPayment_RequestsPaymentCancellation()
+    {
+        Order order = InStatus(OrderStatus.PaymentInProcess);
+
+        order.MarkAsFailed("card declined");
+
+        OrderPaymentCancellationRequested cancellation = Assert.Single(order.DomainEvents.OfType<OrderPaymentCancellationRequested>());
+        Assert.Equal("card declined", cancellation.Reason);
+    }
+
+    [Fact]
+    public void RequestPaymentCancellation_OnAnOpenOrder_Throws()
+    {
+        Order order = InStatus(OrderStatus.Reserved);
+
+        Assert.Throws<DomainException>(() => order.RequestPaymentCancellation("x"));
+    }
+
+    [Fact]
+    public void Create_KeepsTheUser_AndPublishesItInOrderStarted()
+    {
+        Guid userId = Guid.NewGuid();
+
+        Order order = Order.Create([(Guid.NewGuid(), 10m, 2)], userId);
+
+        Assert.Equal(userId, order.UserId);
+        Assert.Equal(userId, Assert.Single(order.DomainEvents.OfType<OrderStarted>()).UserId);
     }
 }

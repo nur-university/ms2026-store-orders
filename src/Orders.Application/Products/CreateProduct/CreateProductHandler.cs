@@ -1,4 +1,4 @@
-﻿using Joseco.Communication.External.Contracts.Services;
+using Joseco.Communication.External.Contracts.Services;
 using Joseco.DDD.Core.Abstractions;
 using MediatR;
 using Nur.Store2026.Integration.Catalog;
@@ -18,7 +18,7 @@ public class CreateProductHandler(
 
     public async Task<Guid> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
-        Product product = new(request.ProductId, request.Name);
+        Product product = new(request.ProductId, request.Name, request.Price);
         await _productRepository.AddAsync(product);
 
         await _unitOfWork.CommitAsync(cancellationToken);
@@ -32,6 +32,7 @@ public class CreateProductHandler(
         {
             Name = message.Name,
             ProductId = message.ProductId,
+            Price = message.Price,
         };
 
         await Handle(command, cancellationToken);

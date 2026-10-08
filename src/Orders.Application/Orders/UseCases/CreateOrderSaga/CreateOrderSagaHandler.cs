@@ -13,7 +13,6 @@ using Orders.Domain.Orders;
 namespace Orders.Application.Orders.UseCases.CreateOrderSaga;
 
 public class CreateOrderSagaHandler :
-    IRequestHandler<CreateOrderCommand, Result<Guid>>,
     INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderStarted>>,
     IIntegrationMessageConsumer<InventoryReserved>,
     IIntegrationMessageConsumer<InventoryReservationFailed>,
@@ -22,7 +21,8 @@ public class CreateOrderSagaHandler :
     IIntegrationMessageConsumer<PaymentCompleted>,
     IIntegrationMessageConsumer<PaymentFailed>,
     INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderPaid>>,
-    INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderStockReleaseRequested>>
+    INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderStockReleaseRequested>>,
+    INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderPaymentCancellationRequested>>
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -36,23 +36,6 @@ public class CreateOrderSagaHandler :
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-    }
-
-    /// <summary>
-    /// Creates a new order and saves it to the database.
-    /// </summary>
-    /// <param name="request"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
-    {
-        List<(Guid productId, decimal price, int quantity)> items = [.. request.Items.Select(i => (i.ProductId, i.Price, i.Quantity))];
-
-        Order order = Order.Create(items);
-
-        await _orderRepository.AddAsync(order);
-        await _unitOfWork.CommitAsync(cancellationToken);
-        return order.Id;
     }
 
     /// <summary>
@@ -75,7 +58,7 @@ public class CreateOrderSagaHandler :
             ];
 
         Nur.Store2026.Integration.Orders.OrderStarted integrationMessage =
-            new(notification.Content.OrderId, items) { Id = notification.Content.Id };
+            new(notification.Content.OrderId, items) { Id = notification.Content.Id, UserId = notification.Content.UserId };
 
         await _publisher.PublishAsync(integrationMessage);
     }
@@ -135,6 +118,16 @@ public class CreateOrderSagaHandler :
         {
             return;
         }
+        if (order.Status is OrderStatus.Failed or OrderStatus.Canceled)
+        {
+            // The order was closed while payments was still registering the pending payment: cancel it.
+            _logger.LogWarning("OrderPaymentInProcessRegistered received for order {OrderId} in status {Status}; requesting payment cancellation",
+                order.Id, order.Status);
+            order.RequestPaymentCancellation("Payment registered after the order was closed");
+            await _unitOfWork.CommitAsync(cancellationToken);
+            return;
+        }
+
         order.MarkAsPaymentInProcess();
 
         await _unitOfWork.CommitAsync(cancellationToken);
@@ -218,6 +211,15 @@ public class CreateOrderSagaHandler :
     {
         var domainEvent = notification.Content;
         Nur.Store2026.Integration.Orders.OrderStockReleaseRequested integrationMessage =
+            new(domainEvent.OrderId, domainEvent.Reason) { Id = domainEvent.Id };
+
+        return _publisher.PublishAsync(integrationMessage);
+    }
+
+    public Task Handle(OutboxMessage<Domain.Orders.Events.OrderPaymentCancellationRequested> notification, CancellationToken cancellationToken)
+    {
+        var domainEvent = notification.Content;
+        Nur.Store2026.Integration.Orders.OrderPaymentCancellationRequested integrationMessage =
             new(domainEvent.OrderId, domainEvent.Reason) { Id = domainEvent.Id };
 
         return _publisher.PublishAsync(integrationMessage);

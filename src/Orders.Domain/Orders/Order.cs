@@ -1,4 +1,4 @@
-﻿using Joseco.DDD.Core.Abstractions;
+using Joseco.DDD.Core.Abstractions;
 using Joseco.DDD.Core.Results;
 using Orders.Domain.Orders.Events;
 using System;
@@ -26,6 +26,9 @@ public class Order : AggregateRoot
     public DateTime? FailedOn { get; private set; }
 
     public string? FailureReason { get; private set; }
+
+    /// <summary>The customer who placed the order (null only for orders created before users were tracked).</summary>
+    public Guid? UserId { get; private set; }
 
     public IReadOnlyCollection<OrderItem> Items
     {
@@ -94,9 +97,10 @@ public class Order : AggregateRoot
         CompletedOn = DateTime.UtcNow;
     }
 
+    /// <summary>Cancels an order that has not been paid yet; once paid, the stock is already confirmed and a refund would be needed.</summary>
     public void MarkAsCanceled()
     {
-        if (Status == OrderStatus.Completed || Status == OrderStatus.Canceled)
+        if (Status != OrderStatus.Started && Status != OrderStatus.Reserved && Status != OrderStatus.PaymentInProcess)
         {
             throw new DomainException(OrderErrors.CanceledStatusNotAllowed(Status));
         }
@@ -107,6 +111,7 @@ public class Order : AggregateRoot
         if (hasReservedStock)
         {
             AddDomainEvent(new OrderStockReleaseRequested(Id, "Order canceled"));
+            AddDomainEvent(new OrderPaymentCancellationRequested(Id, "Order canceled"));
         }
     }
 
@@ -125,6 +130,8 @@ public class Order : AggregateRoot
         if (hasReservedStock)
         {
             AddDomainEvent(new OrderStockReleaseRequested(Id, failureReason));
+            // A payment may already be pending for this order; it must not be collectable any more.
+            AddDomainEvent(new OrderPaymentCancellationRequested(Id, failureReason));
         }
     }
 
@@ -141,13 +148,27 @@ public class Order : AggregateRoot
         AddDomainEvent(new OrderStockReleaseRequested(Id, reason));
     }
 
+    /// <summary>
+    /// Asks payments to cancel a pending payment registered after this order had already been closed
+    /// (OrderPaymentInProcessRegistered arriving late). The status does not change.
+    /// </summary>
+    public void RequestPaymentCancellation(string reason)
+    {
+        if (Status != OrderStatus.Failed && Status != OrderStatus.Canceled)
+        {
+            throw new DomainException(OrderErrors.PaymentCancellationNotAllowed(Status));
+        }
+        AddDomainEvent(new OrderPaymentCancellationRequested(Id, reason));
+    }
+
     // Stock is reserved from Reserved until Paid (once Paid, inventory confirms the exit and it can't be released).
     private bool HasReservedStock() =>
         Status == OrderStatus.Reserved || Status == OrderStatus.PaymentInProcess;
 
-    public static Order Create(List<(Guid productId, decimal price, int quantity)> items)
+    public static Order Create(List<(Guid productId, decimal price, int quantity)> items, Guid? userId = null)
     {
         Order order = new();
+        order.UserId = userId;
 
         foreach (var (productId, price, quantity) in items)
         {
@@ -158,7 +179,7 @@ public class Order : AggregateRoot
             .Select(i => new OrderStartedItem(order.Id, i.productId, i.price, i.quantity))
             .ToList();
 
-        OrderStarted orderCreated = new(order.Id, order.TotalAmount, orderCreatedItems);
+        OrderStarted orderCreated = new(order.Id, order.TotalAmount, orderCreatedItems, userId);
 
         order.AddDomainEvent(orderCreated);
         return order;

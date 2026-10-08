@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,4 +11,5 @@ public class CreateProductCommand : IRequest<Guid>
 {
     public Guid ProductId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public decimal? Price { get; set; }
 }

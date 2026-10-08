@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Orders.Domain.Products;
 
@@ -17,6 +17,9 @@ internal class ProductConfig : IEntityTypeConfiguration<Product>
 
         builder.Property(x => x.Name)
             .HasColumnName("name");
+
+        builder.Property(x => x.Price)
+            .HasColumnName("price");
 
         builder.Ignore("_domainEvents");
         builder.Ignore(x => x.DomainEvents);

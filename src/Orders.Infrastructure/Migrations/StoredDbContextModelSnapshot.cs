@@ -169,6 +169,10 @@ namespace Orders.Infrastructure.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("totalAmount");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("userId");
+
                     b.HasKey("Id");
 
                     b.ToTable("order");
@@ -186,6 +190,10 @@ namespace Orders.Infrastructure.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("character varying(250)")
                         .HasColumnName("name");
+
+                    b.Property<decimal?>("Price")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("price");
 
                     b.HasKey("Id");
 
