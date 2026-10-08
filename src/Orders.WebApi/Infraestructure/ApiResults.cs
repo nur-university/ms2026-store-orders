@@ -13,9 +13,9 @@ internal static class ApiResults
         return Guid.TryParse(value, out userId);
     }
 
-    /// <summary>Staff may act on every order (the "isStaff" claim issued by Identity).</summary>
-    public static bool IsStaff(this ClaimsPrincipal user) =>
-        bool.TryParse(user.FindFirst("isStaff")?.Value, out bool isStaff) && isStaff;
+    /// <summary>True when the "scope" claim issued by Identity contains the permission.</summary>
+    public static bool HasPermission(this ClaimsPrincipal user, string permission) =>
+        user.Claims.Any(c => c.Type == "scope" && c.Value.Split(' ').Contains(permission));
 
     public static IActionResult ToProblem(this ControllerBase controller, Error error)
     {

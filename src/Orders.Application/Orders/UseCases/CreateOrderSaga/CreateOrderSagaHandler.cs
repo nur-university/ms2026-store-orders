@@ -19,7 +19,7 @@ public class CreateOrderSagaHandler :
     INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderReserved>>,
     IIntegrationMessageConsumer<OrderPaymentInProcessRegistered>,
     IIntegrationMessageConsumer<PaymentCompleted>,
-    IIntegrationMessageConsumer<PaymentFailed>,
+    IIntegrationMessageConsumer<OrderDelivered>,
     INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderPaid>>,
     INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderStockReleaseRequested>>,
     INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderPaymentCancellationRequested>>
@@ -106,7 +106,12 @@ public class CreateOrderSagaHandler :
     public Task Handle(OutboxMessage<Domain.Orders.Events.OrderReserved> notification, CancellationToken cancellationToken)
     {
         var domainEvent = notification.Content;
-        Nur.Store2026.Integration.Orders.OrderReserved integrationMessage = new(domainEvent.OrderId, domainEvent.TotalAmount) { Id = domainEvent.Id };
+        Nur.Store2026.Integration.Orders.OrderReserved integrationMessage = new(domainEvent.OrderId, domainEvent.TotalAmount)
+            {
+                Id = domainEvent.Id,
+                CustomerName = domainEvent.CustomerName,
+                CustomerDocument = domainEvent.CustomerDocument
+            };
 
         return _publisher.PublishAsync(integrationMessage);
     }
@@ -173,36 +178,48 @@ public class CreateOrderSagaHandler :
 
         // Throws if the order is not PaymentInProcess yet, so the broker redelivers it after
         // OrderPaymentInProcessRegistered has been processed.
-        order.MarkAsPaid();
+        order.MarkAsPaid(message.InvoiceNumber);
 
         await _unitOfWork.CommitAsync(cancellationToken);
     }
 
     /// <summary>
-    /// Payment rejected: the order fails and the reserved stock is released (compensation).
+    /// The customer picked the products up at the warehouse: the sale is completed.
     /// </summary>
-    public async Task HandleAsync(PaymentFailed message, CancellationToken cancellationToken)
+    public async Task HandleAsync(OrderDelivered message, CancellationToken cancellationToken)
     {
         Order? order = await _orderRepository.GetByIdAsync(message.OrderId);
         if (order == null)
         {
-            _logger.LogWarning("PaymentFailed received for unknown order {OrderId}", message.OrderId);
+            _logger.LogWarning("OrderDelivered received for unknown order {OrderId}", message.OrderId);
             return;
         }
 
-        if (order.Status is not (OrderStatus.Reserved or OrderStatus.PaymentInProcess))
+        if (order.Status == OrderStatus.Completed)
         {
-            return; // duplicated or late message, nothing left to compensate
+            return; // duplicated message
         }
 
-        order.MarkAsFailed($"Payment failed: {message.Reason}");
+        if (order.Status != OrderStatus.Paid)
+        {
+            // Inventory only delivers paid orders, so this means the two services disagree: do not hide it.
+            _logger.LogError("OrderDelivered received for order {OrderId} in status {Status}; it was not completed",
+                order.Id, order.Status);
+            return;
+        }
+
+        order.MarkAsCompleted();
 
         await _unitOfWork.CommitAsync(cancellationToken);
     }
 
     public Task Handle(OutboxMessage<Domain.Orders.Events.OrderPaid> notification, CancellationToken cancellationToken)
     {
-        Nur.Store2026.Integration.Orders.OrderPaid integrationMessage = new(notification.Content.OrderId) { Id = notification.Content.Id };
+        Nur.Store2026.Integration.Orders.OrderPaid integrationMessage = new(notification.Content.OrderId)
+        {
+            Id = notification.Content.Id,
+            InvoiceNumber = notification.Content.InvoiceNumber
+        };
 
         return _publisher.PublishAsync(integrationMessage);
     }

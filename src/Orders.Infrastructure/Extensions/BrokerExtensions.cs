@@ -37,7 +37,7 @@ public static class BrokerExtensions
         services.AddRabbitMqConsumer<OrderPaymentInProcessRegistered, CreateOrderSagaHandler>("orders-order-payment-in-process-registered");
         services.AddRabbitMqConsumer<InventoryReservationFailed, CreateOrderSagaHandler>("orders-inventory-reservation-failed");
         services.AddRabbitMqConsumer<PaymentCompleted, CreateOrderSagaHandler>("orders-payment-completed");
-        services.AddRabbitMqConsumer<PaymentFailed, CreateOrderSagaHandler>("orders-payment-failed");
+        services.AddRabbitMqConsumer<OrderDelivered, CreateOrderSagaHandler>("orders-order-delivered");
 
         services.Decorate<IIntegrationMessageConsumer<ProductCreated>, IdempotentConsumer<ProductCreated>>();
         services.Decorate<IIntegrationMessageConsumer<ProductCreated>, TracingConsumer<ProductCreated>>();
@@ -49,8 +49,8 @@ public static class BrokerExtensions
         services.Decorate<IIntegrationMessageConsumer<InventoryReservationFailed>, TracingConsumer<InventoryReservationFailed>>();
         services.Decorate<IIntegrationMessageConsumer<PaymentCompleted>, IdempotentConsumer<PaymentCompleted>>();
         services.Decorate<IIntegrationMessageConsumer<PaymentCompleted>, TracingConsumer<PaymentCompleted>>();
-        services.Decorate<IIntegrationMessageConsumer<PaymentFailed>, IdempotentConsumer<PaymentFailed>>();
-        services.Decorate<IIntegrationMessageConsumer<PaymentFailed>, TracingConsumer<PaymentFailed>>();
+        services.Decorate<IIntegrationMessageConsumer<OrderDelivered>, IdempotentConsumer<OrderDelivered>>();
+        services.Decorate<IIntegrationMessageConsumer<OrderDelivered>, TracingConsumer<OrderDelivered>>();
 
 
 

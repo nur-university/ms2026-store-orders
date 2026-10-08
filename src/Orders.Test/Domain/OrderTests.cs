@@ -124,6 +124,43 @@ public class OrderTests
     }
 
     [Fact]
+    public void Create_KeepsTheCustomerOfTheSalesNote_AndPassesItOnWhenReserved()
+    {
+        Order order = Order.Create([(Guid.NewGuid(), 10m, 2)], Guid.NewGuid(), "  Ana Perez ", "1234567");
+        order.ClearDomainEvents();
+
+        order.MarkAsReserved();
+
+        Assert.Equal("Ana Perez", order.CustomerName);
+        OrderReserved reserved = Assert.Single(order.DomainEvents.OfType<OrderReserved>());
+        Assert.Equal("Ana Perez", reserved.CustomerName);
+        Assert.Equal("1234567", reserved.CustomerDocument);
+    }
+
+    [Fact]
+    public void Create_TreatsBlankCustomerDataAsMissing()
+    {
+        Order order = Order.Create([(Guid.NewGuid(), 10m, 2)], Guid.NewGuid(), " ", "");
+
+        Assert.Null(order.CustomerName);
+        Assert.Null(order.CustomerDocument);
+    }
+
+    [Fact]
+    public void MarkAsPaid_StoresTheInvoice_AndOnlyAPaidOrderCanBeCompleted()
+    {
+        Order order = InStatus(OrderStatus.PaymentInProcess);
+        Assert.Throws<DomainException>(() => order.MarkAsCompleted());
+
+        order.MarkAsPaid("F-00000042");
+        order.MarkAsCompleted();
+
+        Assert.Equal("F-00000042", order.InvoiceNumber);
+        Assert.Equal(OrderStatus.Completed, order.Status);
+        Assert.NotNull(order.CompletedOn);
+    }
+
+    [Fact]
     public void Create_KeepsTheUser_AndPublishesItInOrderStarted()
     {
         Guid userId = Guid.NewGuid();

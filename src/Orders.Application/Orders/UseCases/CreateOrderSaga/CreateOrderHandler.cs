@@ -47,7 +47,7 @@ public class CreateOrderHandler(IOrderRepository orderRepository, IProductReposi
             items.Add((productId, product.Price.Value, quantity));
         }
 
-        Order order = Order.Create(items, request.UserId);
+        Order order = Order.Create(items, request.UserId, request.CustomerName, request.CustomerDocument);
 
         await orderRepository.AddAsync(order);
         await unitOfWork.CommitAsync(cancellationToken);

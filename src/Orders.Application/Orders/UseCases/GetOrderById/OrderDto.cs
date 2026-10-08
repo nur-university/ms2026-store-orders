@@ -16,6 +16,9 @@ public record OrderDto
     public DateTime? CompletedOn { get; init; }
     public DateTime? FailedOn { get; init; }
     public string? FailureReason { get; init; }
+    public string? CustomerName { get; init; }
+    public string? CustomerDocument { get; init; }
+    public string? InvoiceNumber { get; init; }
     public IReadOnlyList<OrderItemDto> Items { get; init; } = [];
 
     public static OrderDto From(Order order) => new()
@@ -32,6 +35,9 @@ public record OrderDto
         CompletedOn = order.CompletedOn,
         FailedOn = order.FailedOn,
         FailureReason = order.FailureReason,
+        CustomerName = order.CustomerName,
+        CustomerDocument = order.CustomerDocument,
+        InvoiceNumber = order.InvoiceNumber,
         Items = order.Items.Select(i => new OrderItemDto(i.ProductId, i.Price, i.Quantity)).ToList()
     };
 }

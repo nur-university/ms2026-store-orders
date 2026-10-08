@@ -3,6 +3,7 @@ using Joseco.DDD.Core.Abstractions;
 using Joseco.DDD.Core.Results;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using Nur.Store2026.Integration.Inventory;
 using Nur.Store2026.Integration.Payments;
 using Orders.Application.Orders.UseCases.CreateOrderSaga;
 using Orders.Domain.Orders;
@@ -26,9 +27,10 @@ public class CreateOrderSagaHandlerTests
     private Order OrderInStatus(OrderStatus status)
     {
         Order order = Order.Create([(Guid.NewGuid(), 10m, 2)]);
-        if (status >= OrderStatus.Reserved && status <= OrderStatus.Paid) order.MarkAsReserved();
-        if (status >= OrderStatus.PaymentInProcess && status <= OrderStatus.Paid) order.MarkAsPaymentInProcess();
-        if (status == OrderStatus.Paid) order.MarkAsPaid();
+        if (status >= OrderStatus.Reserved && status <= OrderStatus.Completed) order.MarkAsReserved();
+        if (status >= OrderStatus.PaymentInProcess && status <= OrderStatus.Completed) order.MarkAsPaymentInProcess();
+        if (status is OrderStatus.Paid or OrderStatus.Completed) order.MarkAsPaid();
+        if (status == OrderStatus.Completed) order.MarkAsCompleted();
         if (status == OrderStatus.Failed) order.MarkAsFailed("seed");
         if (status == OrderStatus.Canceled) order.MarkAsCanceled();
         order.ClearDomainEvents();
@@ -87,33 +89,50 @@ public class CreateOrderSagaHandlerTests
         VerifySaved(Times.Never());
     }
 
-    [Theory]
-    [InlineData(OrderStatus.Reserved)]
-    [InlineData(OrderStatus.PaymentInProcess)]
-    public async Task PaymentFailed_FailsOrderAndRequestsStockRelease(OrderStatus status)
+    [Fact]
+    public async Task PaymentCompleted_KeepsTheInvoiceOfTheCashier()
     {
-        Order order = OrderInStatus(status);
+        Order order = OrderInStatus(OrderStatus.PaymentInProcess);
 
-        await _handler.HandleAsync(new PaymentFailed(order.Id, "declined"), CancellationToken.None);
+        await _handler.HandleAsync(new PaymentCompleted(order.Id) { InvoiceNumber = "F-00000042", PaymentMethod = "Cash" }, CancellationToken.None);
 
-        Assert.Equal(OrderStatus.Failed, order.Status);
-        Assert.Contains("declined", order.FailureReason);
-        Assert.Single(order.DomainEvents.OfType<OrderStockReleaseRequested>());
+        Assert.Equal("F-00000042", order.InvoiceNumber);
+        Assert.Equal("F-00000042", Assert.Single(order.DomainEvents.OfType<OrderPaid>()).InvoiceNumber);
+    }
+
+    [Fact]
+    public async Task OrderDelivered_CompletesAPaidOrder()
+    {
+        Order order = OrderInStatus(OrderStatus.Paid);
+
+        await _handler.HandleAsync(new OrderDelivered(order.Id), CancellationToken.None);
+
+        Assert.Equal(OrderStatus.Completed, order.Status);
+        Assert.NotNull(order.CompletedOn);
         VerifySaved(Times.Once());
     }
 
     [Theory]
-    [InlineData(OrderStatus.Paid)]
-    [InlineData(OrderStatus.Failed)]
+    [InlineData(OrderStatus.Completed)]   // duplicated message
+    [InlineData(OrderStatus.PaymentInProcess)] // inventory should never deliver an unpaid order: do not complete it
     [InlineData(OrderStatus.Canceled)]
-    public async Task PaymentFailed_ForOrderWithNothingToCompensate_IsIgnored(OrderStatus status)
+    public async Task OrderDelivered_ForAnOrderThatIsNotPaid_IsIgnored(OrderStatus status)
     {
         Order order = OrderInStatus(status);
 
-        await _handler.HandleAsync(new PaymentFailed(order.Id, "declined"), CancellationToken.None);
+        await _handler.HandleAsync(new OrderDelivered(order.Id), CancellationToken.None);
 
         Assert.Equal(status, order.Status);
-        Assert.Empty(order.DomainEvents);
+        VerifySaved(Times.Never());
+    }
+
+    [Fact]
+    public async Task OrderDelivered_ForUnknownOrder_IsIgnored()
+    {
+        _orders.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), false)).ReturnsAsync((Order?)null);
+
+        await _handler.HandleAsync(new OrderDelivered(Guid.NewGuid()), CancellationToken.None);
+
         VerifySaved(Times.Never());
     }
 }

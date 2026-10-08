@@ -134,6 +134,16 @@ namespace Orders.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completedOn");
 
+                    b.Property<string>("CustomerDocument")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("customerDocument");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("customerName");
+
                     b.Property<DateTime?>("FailedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("failedOn");
@@ -142,6 +152,11 @@ namespace Orders.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("failureReason");
+
+                    b.Property<string>("InvoiceNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("invoiceNumber");
 
                     b.Property<DateTime?>("PaidOn")
                         .HasColumnType("timestamp with time zone")

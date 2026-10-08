@@ -49,6 +49,18 @@ internal class OrderStoredModel
     [Column("userId")]
     public Guid? UserId { get; set; }
 
+    [Column("customerName")]
+    [MaxLength(200)]
+    public string? CustomerName { get; set; }
+
+    [Column("customerDocument")]
+    [MaxLength(50)]
+    public string? CustomerDocument { get; set; }
+
+    [Column("invoiceNumber")]
+    [MaxLength(20)]
+    public string? InvoiceNumber { get; set; }
+
     [Column("failureReason")]
     [MaxLength(1000)]
     public string? FailureReason { get; set; } = string.Empty;

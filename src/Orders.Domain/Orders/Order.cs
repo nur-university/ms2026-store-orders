@@ -30,6 +30,13 @@ public class Order : AggregateRoot
     /// <summary>The customer who placed the order (null only for orders created before users were tracked).</summary>
     public Guid? UserId { get; private set; }
 
+    /// <summary>The customer named on the sales note. Walk-in customers have no account, so this is just text.</summary>
+    public string? CustomerName { get; private set; }
+    public string? CustomerDocument { get; private set; }
+
+    /// <summary>Number of the invoice issued when the order was paid at the cashier.</summary>
+    public string? InvoiceNumber { get; private set; }
+
     public IReadOnlyCollection<OrderItem> Items
     {
         get
@@ -62,7 +69,7 @@ public class Order : AggregateRoot
         Status = OrderStatus.Reserved;
         ReservedOn = DateTime.UtcNow;
 
-        AddDomainEvent(new OrderReserved(Id, TotalAmount));
+        AddDomainEvent(new OrderReserved(Id, TotalAmount, CustomerName, CustomerDocument));
     }
 
     public void MarkAsPaymentInProcess()
@@ -75,7 +82,7 @@ public class Order : AggregateRoot
         ProcesingPaymentOn = DateTime.UtcNow;
     }
 
-    public void MarkAsPaid()
+    public void MarkAsPaid(string? invoiceNumber = null)
     {
         if (Status != OrderStatus.PaymentInProcess)
         {
@@ -83,8 +90,9 @@ public class Order : AggregateRoot
         }
         Status = OrderStatus.Paid;
         PaidOn = DateTime.UtcNow;
+        InvoiceNumber = invoiceNumber;
 
-        AddDomainEvent(new OrderPaid(Id));
+        AddDomainEvent(new OrderPaid(Id, invoiceNumber));
     }
 
     public void MarkAsCompleted()
@@ -165,10 +173,13 @@ public class Order : AggregateRoot
     private bool HasReservedStock() =>
         Status == OrderStatus.Reserved || Status == OrderStatus.PaymentInProcess;
 
-    public static Order Create(List<(Guid productId, decimal price, int quantity)> items, Guid? userId = null)
+    public static Order Create(List<(Guid productId, decimal price, int quantity)> items, Guid? userId = null,
+        string? customerName = null, string? customerDocument = null)
     {
         Order order = new();
         order.UserId = userId;
+        order.CustomerName = string.IsNullOrWhiteSpace(customerName) ? null : customerName.Trim();
+        order.CustomerDocument = string.IsNullOrWhiteSpace(customerDocument) ? null : customerDocument.Trim();
 
         foreach (var (productId, price, quantity) in items)
         {

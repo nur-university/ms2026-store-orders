@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Nur.Store2026.Access.Orders.Permissions;
 using Nur.Store2026.Security;
 using Nur.Store2026.Security.Config;
 
@@ -13,7 +14,7 @@ public static class SecurityExtensions
         if (environment is IWebHostEnvironment)
         {
             var jwtOptions = services.BuildServiceProvider().GetRequiredService<JwtOptions>();
-            services.AddSecurity(jwtOptions, []);
+            services.AddSecurity(jwtOptions, OrdersPermission.PermissionsList);
         }
 
         return services;
