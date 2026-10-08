@@ -80,6 +80,8 @@ public class Order : AggregateRoot
         }
         Status = OrderStatus.Paid;
         PaidOn = DateTime.UtcNow;
+
+        AddDomainEvent(new OrderPaid(Id));
     }
 
     public void MarkAsCompleted()
@@ -98,8 +100,14 @@ public class Order : AggregateRoot
         {
             throw new DomainException(OrderErrors.CanceledStatusNotAllowed(Status));
         }
+        bool hasReservedStock = HasReservedStock();
         Status = OrderStatus.Canceled;
         CanceledOn = DateTime.UtcNow;
+
+        if (hasReservedStock)
+        {
+            AddDomainEvent(new OrderStockReleaseRequested(Id, "Order canceled"));
+        }
     }
 
     public void MarkAsFailed(string failureReason)
@@ -108,10 +116,21 @@ public class Order : AggregateRoot
         {
             throw new DomainException(OrderErrors.FailedStatusNotAllowed(Status));
         }
+        bool hasReservedStock = HasReservedStock();
         Status = OrderStatus.Failed;
         FailedOn = DateTime.UtcNow;
         FailureReason = failureReason;
+
+        // Compensation: inventory must give back the stock it reserved for this order.
+        if (hasReservedStock)
+        {
+            AddDomainEvent(new OrderStockReleaseRequested(Id, failureReason));
+        }
     }
+
+    // Stock is reserved from Reserved until Paid (once Paid, inventory confirms the exit and it can't be released).
+    private bool HasReservedStock() =>
+        Status == OrderStatus.Reserved || Status == OrderStatus.PaymentInProcess;
 
     public static Order Create(List<(Guid productId, decimal price, int quantity)> items)
     {

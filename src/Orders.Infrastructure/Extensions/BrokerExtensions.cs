@@ -1,4 +1,4 @@
-﻿
+
 using Joseco.Communication.External.Contracts.Services;
 using Joseco.Communication.External.RabbitMQ.Services;
 using Joseco.Communication.External.RabbitMQ;
@@ -35,11 +35,15 @@ public static class BrokerExtensions
         services.AddRabbitMqConsumer<InventoryReserved, CreateOrderSagaHandler>("orders-inventory-reserved");
         services.AddRabbitMqConsumer<OrderPaymentInProcessRegistered, CreateOrderSagaHandler>("orders-order-payment-in-process-registered");
         services.AddRabbitMqConsumer<InventoryReservationFailed, CreateOrderSagaHandler>("orders-inventory-reservation-failed");
+        services.AddRabbitMqConsumer<PaymentCompleted, CreateOrderSagaHandler>("orders-payment-completed");
+        services.AddRabbitMqConsumer<PaymentFailed, CreateOrderSagaHandler>("orders-payment-failed");
 
         services.Decorate<IIntegrationMessageConsumer<ProductCreated>, TracingConsumer<ProductCreated>>();
         services.Decorate<IIntegrationMessageConsumer<InventoryReserved>, TracingConsumer<InventoryReserved>>();
         services.Decorate<IIntegrationMessageConsumer<OrderPaymentInProcessRegistered>, TracingConsumer<OrderPaymentInProcessRegistered>>();
         services.Decorate<IIntegrationMessageConsumer<InventoryReservationFailed>, TracingConsumer<InventoryReservationFailed>>();
+        services.Decorate<IIntegrationMessageConsumer<PaymentCompleted>, TracingConsumer<PaymentCompleted>>();
+        services.Decorate<IIntegrationMessageConsumer<PaymentFailed>, TracingConsumer<PaymentFailed>>();
 
 
 

@@ -1,8 +1,9 @@
-﻿using Joseco.Communication.External.Contracts.Services;
+using Joseco.Communication.External.Contracts.Services;
 using Joseco.DDD.Core.Abstractions;
 using Joseco.DDD.Core.Results;
 using Joseco.Outbox.Contracts.Model;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using Nur.Store2026.Integration.Inventory;
 using Nur.Store2026.Integration.Orders;
 using Nur.Store2026.Integration.Payments;
@@ -17,14 +18,21 @@ public class CreateOrderSagaHandler :
     IIntegrationMessageConsumer<InventoryReserved>,
     IIntegrationMessageConsumer<InventoryReservationFailed>,
     INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderReserved>>,
-    IIntegrationMessageConsumer<OrderPaymentInProcessRegistered>
+    IIntegrationMessageConsumer<OrderPaymentInProcessRegistered>,
+    IIntegrationMessageConsumer<PaymentCompleted>,
+    IIntegrationMessageConsumer<PaymentFailed>,
+    INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderPaid>>,
+    INotificationHandler<OutboxMessage<Domain.Orders.Events.OrderStockReleaseRequested>>
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IExternalPublisher _publisher;
+    private readonly ILogger<CreateOrderSagaHandler> _logger;
 
-    public CreateOrderSagaHandler(IOrderRepository orderRepository, IExternalPublisher publisher, IUnitOfWork unitOfWork)
+    public CreateOrderSagaHandler(IOrderRepository orderRepository, IExternalPublisher publisher, IUnitOfWork unitOfWork,
+        ILogger<CreateOrderSagaHandler> logger)
     {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -133,5 +141,75 @@ public class CreateOrderSagaHandler :
         order.MarkAsFailed(message.Reason);
 
         await _unitOfWork.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Payment confirmed: the order is paid. Late or duplicated messages are ignored.
+    /// </summary>
+    public async Task HandleAsync(PaymentCompleted message, CancellationToken cancellationToken)
+    {
+        Order? order = await _orderRepository.GetByIdAsync(message.OrderId);
+        if (order == null)
+        {
+            _logger.LogWarning("PaymentCompleted received for unknown order {OrderId}", message.OrderId);
+            return;
+        }
+
+        if (order.Status is OrderStatus.Paid or OrderStatus.Completed)
+        {
+            return; // duplicated message
+        }
+
+        if (order.Status is OrderStatus.Failed or OrderStatus.Canceled)
+        {
+            // Money was taken for an order that is already dead: needs a refund (not implemented yet).
+            _logger.LogError("PaymentCompleted received for order {OrderId} in status {Status}; a refund is required",
+                order.Id, order.Status);
+            return;
+        }
+
+        // Throws if the order is not PaymentInProcess yet, so the broker redelivers it after
+        // OrderPaymentInProcessRegistered has been processed.
+        order.MarkAsPaid();
+
+        await _unitOfWork.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Payment rejected: the order fails and the reserved stock is released (compensation).
+    /// </summary>
+    public async Task HandleAsync(PaymentFailed message, CancellationToken cancellationToken)
+    {
+        Order? order = await _orderRepository.GetByIdAsync(message.OrderId);
+        if (order == null)
+        {
+            _logger.LogWarning("PaymentFailed received for unknown order {OrderId}", message.OrderId);
+            return;
+        }
+
+        if (order.Status is not (OrderStatus.Reserved or OrderStatus.PaymentInProcess))
+        {
+            return; // duplicated or late message, nothing left to compensate
+        }
+
+        order.MarkAsFailed($"Payment failed: {message.Reason}");
+
+        await _unitOfWork.CommitAsync(cancellationToken);
+    }
+
+    public Task Handle(OutboxMessage<Domain.Orders.Events.OrderPaid> notification, CancellationToken cancellationToken)
+    {
+        Nur.Store2026.Integration.Orders.OrderPaid integrationMessage = new(notification.Content.OrderId);
+
+        return _publisher.PublishAsync(integrationMessage);
+    }
+
+    public Task Handle(OutboxMessage<Domain.Orders.Events.OrderStockReleaseRequested> notification, CancellationToken cancellationToken)
+    {
+        var domainEvent = notification.Content;
+        Nur.Store2026.Integration.Orders.OrderStockReleaseRequested integrationMessage =
+            new(domainEvent.OrderId, domainEvent.Reason);
+
+        return _publisher.PublishAsync(integrationMessage);
     }
 }
