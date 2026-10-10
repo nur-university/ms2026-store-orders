@@ -110,7 +110,10 @@ public class CreateOrderSagaHandler :
             {
                 Id = domainEvent.Id,
                 CustomerName = domainEvent.CustomerName,
-                CustomerDocument = domainEvent.CustomerDocument
+                CustomerDocument = domainEvent.CustomerDocument,
+                Lines = domainEvent.Lines?
+                    .Select(l => new OrderLine(l.ProductId, l.ProductName, l.Quantity, l.UnitPrice))
+                    .ToList()
             };
 
         return _publisher.PublishAsync(integrationMessage);
@@ -218,7 +221,9 @@ public class CreateOrderSagaHandler :
         Nur.Store2026.Integration.Orders.OrderPaid integrationMessage = new(notification.Content.OrderId)
         {
             Id = notification.Content.Id,
-            InvoiceNumber = notification.Content.InvoiceNumber
+            InvoiceNumber = notification.Content.InvoiceNumber,
+            CustomerName = notification.Content.CustomerName,
+            CustomerDocument = notification.Content.CustomerDocument
         };
 
         return _publisher.PublishAsync(integrationMessage);

@@ -4,6 +4,7 @@ using Joseco.DDD.Core.Results;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Nur.Store2026.Integration.Payments;
+using Orders.Application.Orders;
 using Orders.Application.Orders.CreateOrder;
 using Orders.Application.Orders.UseCases.CancelOrder;
 using Orders.Application.Orders.UseCases.CreateOrderSaga;
@@ -39,7 +40,7 @@ public class OrderUseCasesTests
 
     // ---- create
 
-    private CreateOrderHandler CreateHandler() => new(_orders.Object, _products.Object, _unitOfWork.Object);
+    private CreateOrderHandler CreateHandler() => new(_orders.Object, new OrderLinesPricer(_products.Object), _unitOfWork.Object);
 
     private void KnownProducts(params Product[] products) =>
         _products.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>())).ReturnsAsync(products);
@@ -141,15 +142,15 @@ public class OrderUseCasesTests
     [Fact]
     public async Task GetOrders_FiltersByUser_ExceptForStaff()
     {
-        _orders.Setup(r => r.GetPageAsync(It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<int>()))
+        _orders.Setup(r => r.GetPageAsync(It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<OrderStatus?>(), It.IsAny<DateTime?>()))
             .ReturnsAsync(([], 0));
         GetOrdersHandler handler = new(_orders.Object);
 
         await handler.Handle(new GetOrdersQuery(_user, false, 3, 10), CancellationToken.None);
         await handler.Handle(new GetOrdersQuery(_user, true, 1, 1000), CancellationToken.None);
 
-        _orders.Verify(r => r.GetPageAsync(_user, 20, 10), Times.Once);   // page 3 of 10 -> skip 20
-        _orders.Verify(r => r.GetPageAsync(null, 0, 100), Times.Once);    // staff sees all; page size capped at 100
+        _orders.Verify(r => r.GetPageAsync(_user, 20, 10, null, null), Times.Once);   // page 3 of 10 -> skip 20
+        _orders.Verify(r => r.GetPageAsync(null, 0, 100, null, null), Times.Once);    // staff sees all; page size capped at 100
     }
 
     // ---- cancel

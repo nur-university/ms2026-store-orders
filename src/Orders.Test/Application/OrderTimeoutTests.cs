@@ -115,6 +115,8 @@ public class OrderTimeoutTests
         _orders.Setup(r => r.GetStaleAsync(now.UtcDateTime.AddMinutes(-5), now.UtcDateTime.AddMinutes(-6), now.UtcDateTime.AddMinutes(-30), options.BatchSize))
             .ReturnsAsync([(ok1, OrderStatus.Started), (broken, OrderStatus.Reserved), (ok2, OrderStatus.PaymentInProcess)]);
 
+        _orders.Setup(r => r.GetStaleDraftIdsAsync(It.IsAny<DateTime>(), It.IsAny<int>())).ReturnsAsync([]);
+
         Mock<IMediator> mediator = new();
         mediator.Setup(m => m.Send(It.Is<ExpireOrderCommand>(c => c.OrderId == broken), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("concurrency conflict"));
@@ -135,5 +137,34 @@ public class OrderTimeoutTests
             It.IsAny<CancellationToken>()), Times.Once);
         mediator.Verify(m => m.Send(It.Is<ExpireOrderCommand>(c => c.OrderId == ok2 && c.ExpectedStatus == OrderStatus.PaymentInProcess),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task BackgroundService_DiscardsDraftsNobodyTouched()
+    {
+        Guid stale1 = Guid.NewGuid(), stale2 = Guid.NewGuid();
+        DateTimeOffset now = new(2026, 10, 8, 12, 0, 0, TimeSpan.Zero);
+        OrderTimeoutOptions options = new() { DraftExpiry = TimeSpan.FromHours(24) };
+
+        _orders.Setup(r => r.GetStaleAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<int>()))
+            .ReturnsAsync([]);
+        _orders.Setup(r => r.GetStaleDraftIdsAsync(now.UtcDateTime.AddHours(-24), options.BatchSize))
+            .ReturnsAsync([stale1, stale2]);
+
+        Mock<IMediator> mediator = new();
+        mediator.Setup(m => m.Send(It.IsAny<ExpireDraftCommand>(), It.IsAny<CancellationToken>())).ReturnsAsync(Result.Success(true));
+
+        ServiceCollection services = new();
+        services.AddScoped(_ => _orders.Object);
+        services.AddScoped(_ => mediator.Object);
+        OrderTimeoutBackgroundService service = new(
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            Options.Create(options), new FixedClock(now), NullLogger<OrderTimeoutBackgroundService>.Instance);
+
+        int changed = await service.ExpireStaleOrdersAsync(CancellationToken.None);
+
+        Assert.Equal(2, changed);
+        mediator.Verify(m => m.Send(It.Is<ExpireDraftCommand>(c => c.UntouchedSince == now.UtcDateTime.AddHours(-24)),
+            It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 }

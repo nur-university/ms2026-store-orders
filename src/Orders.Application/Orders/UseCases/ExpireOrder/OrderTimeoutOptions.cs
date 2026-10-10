@@ -17,5 +17,8 @@ public class OrderTimeoutOptions
     /// <summary>How often the worker looks for stale orders.</summary>
     public TimeSpan CheckInterval { get; set; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>Draft: a sales note nobody has touched is discarded after this time.</summary>
+    public TimeSpan DraftExpiry { get; set; } = TimeSpan.FromHours(24);
+
     public int BatchSize { get; set; } = 50;
 }

@@ -87,6 +87,41 @@ internal class OrderTimeoutBackgroundService(
             }
         }
 
-        return expired;
+        return expired + await DiscardStaleDraftsAsync(now, cancellationToken);
+    }
+
+    private async Task<int> DiscardStaleDraftsAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        DateTime untouchedSince = now - _options.DraftExpiry;
+
+        IReadOnlyList<Guid> drafts;
+        using (IServiceScope scope = scopeFactory.CreateScope())
+        {
+            drafts = await scope.ServiceProvider.GetRequiredService<IOrderRepository>()
+                .GetStaleDraftIdsAsync(untouchedSince, _options.BatchSize);
+        }
+
+        int discarded = 0;
+        foreach (Guid draftId in drafts)
+        {
+            try
+            {
+                using IServiceScope scope = scopeFactory.CreateScope();
+                var result = await scope.ServiceProvider.GetRequiredService<IMediator>()
+                    .Send(new ExpireDraftCommand(draftId, untouchedSince), cancellationToken);
+
+                if (result.IsSuccess && result.Value)
+                {
+                    discarded++;
+                    logger.LogInformation("Draft {OrderId} was discarded after {Expiry} without changes", draftId, _options.DraftExpiry);
+                }
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning(ex, "Draft {OrderId} could not be discarded", draftId);
+            }
+        }
+
+        return discarded;
     }
 }

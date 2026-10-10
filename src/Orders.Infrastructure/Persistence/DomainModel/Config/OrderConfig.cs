@@ -67,6 +67,9 @@ internal class OrderConfig : IEntityTypeConfiguration<Order>,
         builder.Property(x => x.CustomerName).HasColumnName("customerName").HasMaxLength(200);
         builder.Property(x => x.CustomerDocument).HasColumnName("customerDocument").HasMaxLength(50);
         builder.Property(x => x.InvoiceNumber).HasColumnName("invoiceNumber").HasMaxLength(20);
+        builder.Property(x => x.UpdatedOn).HasColumnName("updatedOn");
+        builder.Property(x => x.CancellationReason).HasColumnName("cancellationReason").HasMaxLength(500);
+        builder.Property(x => x.RefundRequired).HasColumnName("refundRequired");
 
         builder.Property(x => x.FailureReason)
             .HasColumnName("failureReason")
@@ -91,6 +94,10 @@ internal class OrderConfig : IEntityTypeConfiguration<Order>,
 
         builder.Property(x => x.ProductId)
             .HasColumnName("productId");
+
+        builder.Property(x => x.ProductName)
+            .HasColumnName("productName")
+            .HasMaxLength(250);
 
         var quantityConverter = new ValueConverter<QuantityValue, int>(
                 quantityValue => quantityValue.Value,

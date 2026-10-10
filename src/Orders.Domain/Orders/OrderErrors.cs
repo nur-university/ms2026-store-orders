@@ -43,6 +43,17 @@ public class OrderErrors
             $"A payment can only be canceled for a Failed or Canceled order. The current status is {status}.",
             ErrorType.Validation);
 
+    public static Error NotADraft(OrderStatus status) =>
+        new("Order.NotADraft", $"Only a draft can be edited, confirmed or discarded. The current status is {status}.", ErrorType.Conflict);
+
+    public static Error AnnulNotAllowed(OrderStatus status) =>
+        new("Order.AnnulNotAllowed",
+            $"Only a paid order whose goods were not picked up yet can be annulled. The current status is {status}.",
+            ErrorType.Conflict);
+
+    public static Error AnnulReasonRequired() =>
+        new("Order.AnnulReasonRequired", "The reason for annulling a paid sale is required", ErrorType.Validation);
+
     public static Error EmptyOrder() =>
         new("Order.Empty", "An order needs at least one item", ErrorType.Validation);
 

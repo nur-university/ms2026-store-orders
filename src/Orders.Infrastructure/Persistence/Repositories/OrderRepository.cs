@@ -12,18 +12,43 @@ internal class OrderRepository(DomainDbContext context) : IOrderRepository
         await _context.Orders.AddAsync(entity);
     }
 
-    public async Task<(IReadOnlyList<Order> Orders, int Total)> GetPageAsync(Guid? userId, int skip, int take)
+    public async Task<(IReadOnlyList<Order> Orders, int Total)> GetPageAsync(Guid? userId, int skip, int take,
+        OrderStatus? status = null, DateTime? paidBefore = null)
     {
         IQueryable<Order> query = _context.Orders.AsNoTracking();
         if (userId.HasValue)
         {
             query = query.Where(o => o.UserId == userId.Value);
         }
+        if (status.HasValue)
+        {
+            query = query.Where(o => o.Status == status.Value);
+        }
+        if (paidBefore.HasValue)
+        {
+            query = query.Where(o => o.PaidOn != null && o.PaidOn < paidBefore.Value);
+        }
 
         int total = await query.CountAsync();
-        List<Order> page = await query.Include("_items").OrderByDescending(o => o.StartedOn).Skip(skip).Take(take).ToListAsync();
+
+        // The oldest paid sale first: it is the one somebody has to look at.
+        IQueryable<Order> ordered = status == OrderStatus.Paid
+            ? query.OrderBy(o => o.PaidOn)
+            : query.OrderByDescending(o => o.StartedOn);
+
+        List<Order> page = await ordered.Include("_items").Skip(skip).Take(take).ToListAsync();
 
         return (page, total);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetStaleDraftIdsAsync(DateTime updatedBefore, int take)
+    {
+        return await _context.Orders.AsNoTracking()
+            .Where(o => o.Status == OrderStatus.Draft && o.UpdatedOn < updatedBefore)
+            .OrderBy(o => o.UpdatedOn)
+            .Select(o => o.Id)
+            .Take(take)
+            .ToListAsync();
     }
 
     public async Task<IReadOnlyList<(Guid OrderId, OrderStatus Status)>> GetStaleAsync(

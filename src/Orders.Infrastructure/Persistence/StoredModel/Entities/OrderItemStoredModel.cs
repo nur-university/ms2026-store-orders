@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Orders.Infrastructure.Persistence.StoredModel.Entities;
@@ -18,6 +18,10 @@ internal class OrderItemStoredModel
     [Column("productId")]
     public Guid ProductId { get; set; }
     public ProductStoredModel Product { get; set; } = null!;
+
+    [Column("productName")]
+    [MaxLength(250)]
+    public string ProductName { get; set; } = string.Empty;
 
     [Required]
     [Column("quantity")]

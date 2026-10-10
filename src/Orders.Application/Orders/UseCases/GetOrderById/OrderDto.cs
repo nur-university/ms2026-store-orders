@@ -19,6 +19,9 @@ public record OrderDto
     public string? CustomerName { get; init; }
     public string? CustomerDocument { get; init; }
     public string? InvoiceNumber { get; init; }
+    public DateTime UpdatedOn { get; init; }
+    public string? CancellationReason { get; init; }
+    public bool RefundRequired { get; init; }
     public IReadOnlyList<OrderItemDto> Items { get; init; } = [];
 
     public static OrderDto From(Order order) => new()
@@ -38,8 +41,11 @@ public record OrderDto
         CustomerName = order.CustomerName,
         CustomerDocument = order.CustomerDocument,
         InvoiceNumber = order.InvoiceNumber,
-        Items = order.Items.Select(i => new OrderItemDto(i.ProductId, i.Price, i.Quantity)).ToList()
+        UpdatedOn = order.UpdatedOn,
+        CancellationReason = order.CancellationReason,
+        RefundRequired = order.RefundRequired,
+        Items = order.Items.Select(i => new OrderItemDto(i.ProductId, i.ProductName, i.Price, i.Quantity)).ToList()
     };
 }
 
-public record OrderItemDto(Guid ProductId, decimal Price, int Quantity);
+public record OrderItemDto(Guid ProductId, string ProductName, decimal Price, int Quantity);

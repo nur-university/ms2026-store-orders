@@ -106,6 +106,12 @@ namespace Orders.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("productId");
 
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("productName");
+
                     b.Property<int>("Quantity")
                         .HasColumnType("integer")
                         .HasColumnName("quantity");
@@ -129,6 +135,11 @@ namespace Orders.Infrastructure.Migrations
                     b.Property<DateTime?>("CanceledOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("canceledOn");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cancellationReason");
 
                     b.Property<DateTime?>("CompletedOn")
                         .HasColumnType("timestamp with time zone")
@@ -166,6 +177,10 @@ namespace Orders.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("procesingPaymentOn");
 
+                    b.Property<bool>("RefundRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("refundRequired");
+
                     b.Property<DateTime?>("ReservedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("reservedOn");
@@ -183,6 +198,10 @@ namespace Orders.Infrastructure.Migrations
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("totalAmount");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updatedOn");
 
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")

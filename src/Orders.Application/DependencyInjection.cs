@@ -1,5 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Orders.Application.Abstractions.Behaviors;
+using Orders.Application.Orders;
 using System.Reflection;
 
 namespace Orders.Application;
@@ -13,6 +14,8 @@ public static class DependencyInjection
             config.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
             config.AddOpenBehavior(typeof(RequestLoggingPipelineBehavior<,>));
         });
+
+        services.AddScoped<OrderLinesPricer>();
 
         return services;
     }

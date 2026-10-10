@@ -61,6 +61,16 @@ internal class OrderStoredModel
     [MaxLength(20)]
     public string? InvoiceNumber { get; set; }
 
+    [Column("updatedOn")]
+    public DateTime UpdatedOn { get; set; }
+
+    [Column("cancellationReason")]
+    [MaxLength(500)]
+    public string? CancellationReason { get; set; }
+
+    [Column("refundRequired")]
+    public bool RefundRequired { get; set; }
+
     [Column("failureReason")]
     [MaxLength(1000)]
     public string? FailureReason { get; set; } = string.Empty;
