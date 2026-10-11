@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Joseco.DDD.Core" Version="1.0.0" Condition="!Exists('$(MSBuildThisFileDirectory)..\..\..\..\Utils\Joseco.App.Core\src\Joseco.DDD.Core\Joseco.DDD.Core.csproj')" />
+    <PackageReference Include="Joseco.DDD.Core" Version="1.0.3" Condition="!Exists('$(MSBuildThisFileDirectory)..\..\..\..\Utils\Joseco.App.Core\src\Joseco.DDD.Core\Joseco.DDD.Core.csproj')" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\..\Utils\Joseco.App.Core\src\Joseco.DDD.Core\Joseco.DDD.Core.csproj" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\Utils\Joseco.App.Core\src\Joseco.DDD.Core\Joseco.DDD.Core.csproj')" />
   </ItemGroup>
 
